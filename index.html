@@ -1,0 +1,303 @@
+import os
+import time
+import random
+from itertools import permutations
+
+def mostrar_matriz(nodos, matriz):
+
+    print("\nMATRIZ DE DISTANCIAS")
+
+    print("     ", end="")
+
+    for nodo in nodos:
+        print(f"{nodo:>6}", end="")
+
+    print()
+
+    for i in range(len(nodos)):
+
+        print(f"{nodos[i]:>3}  ", end="")
+
+        for j in range(len(nodos)):
+
+            if matriz[i][j] == float("inf"):
+                print(f"{'∞':>6}", end="")
+            else:
+                print(f"{matriz[i][j]:>6}", end="")
+
+        print()
+        
+def generacion_manual(nodo):
+    nodos= []
+    for i in range(nodo):
+        nodos.append(chr(65+i))
+    matriz= []
+    for i in range(nodo):
+         fil=[]
+         for j in range (nodo):
+            if i==j:
+                fil.append(0)
+            else:
+                fil.append(float("inf"))
+         matriz.append(fil)
+            
+    return nodos,matriz
+
+def agregar_aristas(nodos, matriz):
+
+    while True:
+
+        print("\n1. Agregar arista")
+        print("2. Terminar")
+
+        try:
+            opcion = int(input("Ingrese una opcion: "))
+
+            if opcion == 2:
+                break
+
+            if opcion != 1:
+                print("Opcion invalida.")
+                continue
+
+            # PEDIR ORIGEN XD
+            while True:
+                origen = input("Ingresa el nodo de origen: ").upper()
+
+                if origen in nodos:
+                    break
+
+                print("Error: ese nodo no existe.")
+                print("Nodos disponibles:", nodos)
+
+            # PEDIR DESTINO (o-=)
+            while True:
+                destino = input("Ingresa el nodo de destino: ").upper()
+
+                if destino not in nodos:
+                    print("Error: ese nodo no existe.")
+                    print("Nodos disponibles:", nodos)
+                    continue
+
+                if origen == destino:
+                    print("Error: no puedes conectar un nodo consigo mismo.")
+                    continue
+
+                break
+
+            # BUSCAR POSICIONES (X_X)
+            i = nodos.index(origen)
+            j = nodos.index(destino)
+
+            # VERIFICAR SI YA EXISTE (7x7)
+            if matriz[i][j] != float("inf"):
+                print("Error: esa arista ya existe.")
+                continue
+
+            # PEDIR PESO
+            while True:
+                try:
+                    peso = int(input("Ingrese el peso de la arista: "))
+
+                    if peso > 0:
+                        break
+
+                    print("Error: el peso debe ser mayor que 0.")
+
+                except ValueError:
+                    print("Error: ingrese un numero entero.")
+
+            # GUARDAR ARISTA
+            matriz[i][j] = peso
+            matriz[j][i] = peso
+
+            print(f"Arista {origen} - {destino} agregada correctamente.")
+
+        except ValueError:
+            print("Error: ingrese una opcion valida.")
+    
+    
+def generacion_aleatoria(nodo):
+    nodos = []
+    for i in range(nodo):
+        nodos.append(chr(65 + i))
+    matriz = []
+    for i in range(nodo):
+        fila = []
+        for j in range(nodo):
+            if i == j:
+                fila.append(0)
+            else:
+                fila.append(float("inf"))
+
+        matriz.append(fila)
+
+    # Crear ciclo Hamiltoniano obligatorio para cumplir el enunciado
+    for i in range(nodo):
+        siguiente = (i + 1) % nodo
+        peso = random.randint(1, 100)
+        matriz[i][siguiente] = peso
+        matriz[siguiente][i] = peso
+
+    return nodos, matriz
+
+
+def encontrar_ciclos(nodos, matriz):
+    ciclos = []
+    inicio = nodos[0]
+    restantes = nodos[1:]
+    
+    for permutacion in permutations(restantes):
+        if permutacion[0] > permutacion[-1]:
+            continue
+            
+        ciclo = (inicio,) + permutacion + (inicio,)
+        valido = True
+        for i in range(len(ciclo) - 1):
+            origen = nodos.index(ciclo[i])
+            destino = nodos.index(ciclo[i+1])
+            if matriz[origen][destino] == float("inf"):
+                valido = False
+                break
+        if valido:
+            ciclos.append(ciclo)
+    return ciclos
+def calcular_costo(ciclo, nodos, matriz):
+
+    costo = 0
+
+    for i in range(len(ciclo) - 1):
+
+        origen = nodos.index(ciclo[i])
+        destino = nodos.index(ciclo[i + 1])
+
+        costo += matriz[origen][destino]
+
+    return costo
+
+
+def fuerza_bruta(nodos, matriz):
+
+    ciclos = encontrar_ciclos(nodos, matriz)
+
+    if len(ciclos) == 0:
+
+        print("\nNo existe ningun ciclo Hamiltoniano.")
+
+        ruta, faltantes = aristas_faltantes(nodos, matriz)
+
+        print("\nARISTAS FALTANTES:")
+
+        for a, b in faltantes:
+            print(f"{a} - {b}")
+
+        return
+
+    mejor_ciclo = None
+    mejor_costo = float("inf")
+
+    print("\nCICLOS HAMILTONIANOS ENCONTRADOS:")
+
+    for ciclo in ciclos:
+
+        costo = calcular_costo(ciclo, nodos, matriz)
+
+        print(" → ".join(ciclo), "=", costo)
+
+        if costo < mejor_costo:
+            mejor_costo = costo
+            mejor_ciclo = ciclo
+
+    print("\n-----------------------------")
+    print("RUTAS EVALUADAS POR FUERZA BRUTA:", len(ciclos))
+    print("CICLOS HAMILTONIANOS ÚNICOS:", len(ciclos) // 2)
+    print("MEJOR CICLO:", " → ".join(mejor_ciclo))
+    print("COSTO MINIMO:", mejor_costo)
+    print("-----------------------------")
+
+
+
+def aristas_faltantes(nodos, matriz):
+
+    inicio = nodos[0]
+    restantes = nodos[1:]
+
+    menor_faltantes = None
+    mejor_ruta = None
+
+    for perm in permutations(restantes):
+
+        ciclo = (inicio,) + perm + (inicio,)
+        faltantes = []
+
+        for i in range(len(ciclo) - 1):
+
+            a = nodos.index(ciclo[i])
+            b = nodos.index(ciclo[i + 1])
+
+            if matriz[a][b] == float("inf"):
+                faltantes.append((ciclo[i], ciclo[i + 1]))
+
+        # Guardamos la ruta que necesite menos aristas
+        if menor_faltantes is None or len(faltantes) < len(menor_faltantes):
+            menor_faltantes = faltantes
+            mejor_ruta = ciclo
+
+    return mejor_ruta, menor_faltantes
+
+
+
+
+#Construir Viajero, primero la cantidad de Nodos
+while True:
+    print("          BIENVENIDO AL PROGRAMA VIAJERO")
+    nodo= int (input("Ingrese la cantidad de nodos entre (5 - 10): "))
+    if 5<=nodo<=10:
+        break
+    print ("Valor invalido, intentar denuevo")
+    time.sleep(1)
+    os.system("cls")
+   #termina la secuencia y sigue con el programa  
+   
+while True:
+
+    while True:
+        opcion = int(input(
+            "\n1. Generación Manual"
+            "\n2. Generación Aleatoria"
+            "\n3. Salir"
+            "\nOpción: "
+        ))
+
+        if 1 <= opcion <= 3:
+            break
+
+        print("Opción inválida.")
+
+    match opcion:
+
+        case 1:
+            print("\nGeneración manual")
+
+            nodos, matriz = generacion_manual(nodo)
+
+            print("Nodos:", nodos)
+
+            agregar_aristas(nodos, matriz)
+
+            mostrar_matriz(nodos, matriz)
+
+            fuerza_bruta(nodos, matriz)
+
+        case 2:
+            print("\nGeneración aleatoria")
+
+            nodos, matriz = generacion_aleatoria(nodo)
+
+            mostrar_matriz(nodos, matriz)
+
+            fuerza_bruta(nodos, matriz)
+
+        case 3:
+            print("\nGracias por usar el programa.")
+            break
